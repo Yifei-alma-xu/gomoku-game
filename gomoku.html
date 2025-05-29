@@ -247,6 +247,35 @@
             transform: scale(1.05);
         }
 
+        /* 添加预览棋子的样式 */
+        .preview-stone {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .preview-stone.black {
+            background: radial-gradient(circle at 30% 30%, rgba(102, 102, 102, 0.6), rgba(0, 0, 0, 0.6));
+        }
+
+        .preview-stone.white {
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.6), rgba(221, 221, 221, 0.6));
+        }
+
+        .cell:hover .preview-stone {
+            opacity: 1;
+        }
+
+        .cell.has-stone:hover .preview-stone {
+            opacity: 0;
+        }
+
+        /* 调整棋子样式的z-index */
         .stone {
             width: 26px;
             height: 26px;
@@ -1044,6 +1073,37 @@
         const player1AvatarOptions = document.querySelectorAll('#player1-avatar-options .avatar-option');
         const player2AvatarOptions = document.querySelectorAll('#player2-avatar-options .avatar-option');
 
+        // 添加模式选择的事件监听
+        document.querySelectorAll('.option-group button[data-mode]').forEach(button => {
+            button.addEventListener('click', function() {
+                // 移除其他按钮的选中状态
+                document.querySelectorAll('.option-group button[data-mode]').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+
+                // 添加当前按钮的选中状态
+                this.classList.add('selected');
+                gameState.mode = this.dataset.mode;
+
+                // 显示对应设置面板
+                difficultySection.style.display = gameState.mode === 'pvc' ? 'block' : 'none';
+                player2Settings.style.display = gameState.mode === 'pvp' ? 'block' : 'none';
+                document.getElementById('online-section').style.display = 
+                    gameState.mode === 'online' ? 'block' : 'none';
+            });
+        });
+
+        // 添加难度选择的事件监听
+        document.querySelectorAll('#difficulty-section .option-button').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('#difficulty-section .option-button').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                gameState.difficulty = this.dataset.difficulty;
+            });
+        });
+
         // 初始化头像选择
         player1AvatarOptions.forEach(option => {
             option.addEventListener('click', () => {
@@ -1071,6 +1131,9 @@
             player1AvatarOptions[randomIndex1].click();
             player2AvatarOptions[randomIndex2].click();
         }
+
+        // 页面加载时随机选择头像
+        selectRandomAvatar();
 
         // 模式选择 - 修改后的代码
         document.querySelectorAll('.option-group button[data-mode]').forEach(button => {
@@ -1293,42 +1356,54 @@
                 initializeGame();
             });
 
-            conn.on('data', (data) => {
-                if (data.type === 'handshake') {
-                    gameState.online.opponentName = data.name;
-                    gameState.online.opponentAvatar = data.avatar;
-                    updatePlayerInfo();
-                } else if (data.type === 'move') {
-                    placeStone(data.row, data.col, data.player);
-                    switchPlayer();
-                } else if (data.type === 'game_over') {
-                    if (data.result === 'draw') {
-                        gameOver('平局!');
-                    } else {
-                        const winnerName = data.winnerName;
-                        gameOver(`${winnerName} 获胜!`);
-                    }
-                } else if (data.type === 'rematch_request') {
-                    handleRematchRequest();
-                } else if (data.type === 'rematch_accept') {
-                    startNewGame();
-                    showMessage('对方同意了重新开始的请求');
-                } else if (data.type === 'rematch_decline') {
-                    showMessage('对方拒绝了重新开始的请求');
-                    enableRematchButton();
-                } else if (data.type === 'return_to_menu') {
-                    cleanupOnlineConnection();
-                    menuContainer.style.display = 'block';
-                    gameContainer.style.display = 'none';
-                } else if (data.type === 'undo_request') {
-                    handleUndoRequest();
-                } else if (data.type === 'undo_accept') {
-                    performUndo();
-                    enableUndoButton();
-                    showMessage('对方同意了悔棋请求');
-                } else if (data.type === 'undo_decline') {
-                    showMessage('对方拒绝了悔棋请求');
-                    enableUndoButton();
+            conn.on('data', function(data) {
+                console.log('收到消息:', data);
+                
+                switch(data.type) {
+                    case 'handshake':
+                        gameState.online.opponentName = data.name;
+                        gameState.online.opponentAvatar = data.avatar;
+                        updatePlayerInfo();
+                        break;
+                        
+                    case 'move':
+                        placeStone(data.row, data.col, data.player);
+                        switchPlayer();
+                        break;
+                        
+                    case 'game_over':
+                        if (data.result === 'draw') {
+                            gameOver('平局!');
+                        } else {
+                            gameOver(`${data.winnerName} 获胜!`);
+                        }
+                        break;
+                        
+                    case 'rematch_start':
+                        startNewGame();
+                        showMessage('对方重新开始了游戏');
+                        break;
+                        
+                    case 'return_to_menu':
+                        cleanupOnlineConnection();
+                        menuContainer.style.display = 'block';
+                        gameContainer.style.display = 'none';
+                        break;
+                        
+                    case 'undo_request':
+                        handleUndoRequest();
+                        break;
+                        
+                    case 'undo_accept':
+                        performUndo();
+                        enableUndoButton();
+                        showMessage('对方同意了悔棋请求');
+                        break;
+                        
+                    case 'undo_decline':
+                        showMessage('对方拒绝了悔棋请求');
+                        enableUndoButton();
+                        break;
                 }
             });
 
@@ -1357,7 +1432,7 @@
             }
         }
 
-        // 开始游戏
+        // 开始游戏按钮事件处理
         startButton.addEventListener('click', () => {
             if (!gameState.mode) {
                 showMessage('请选择游戏模式');
@@ -1368,14 +1443,14 @@
             gameState.player1Name = player1NameInput.value.trim() || '玩家1';
             if (gameState.mode === 'pvp') {
                 gameState.player2Name = player2NameInput.value.trim() || '玩家2';
-            } else {
+            } else if (gameState.mode === 'pvc') {
                 gameState.player2Name = '电脑';
             }
 
             // 获取时间限制
             gameState.timeLimit = parseInt(timeLimitInput.value) || 60;
             if (gameState.timeLimit < 10 || gameState.timeLimit > 300) {
-                showMessage('时间限制必须在10-300秒之间', 'error');
+                showMessage('时间限制必须在10-300秒之间');
                 return;
             }
 
@@ -1386,6 +1461,9 @@
 
         // 显示消息
         function showMessage(message, type = 'info') {
+            const gameMessageElement = document.getElementById('game-message');
+            if (!gameMessageElement) return;
+
             gameMessageElement.textContent = message;
             gameMessageElement.className = 'game-message';
             if (type === 'error') {
@@ -1491,8 +1569,9 @@
             gameState.board = Array(15).fill().map(() => Array(15).fill(null));
             gameState.currentPlayer = 'black';
             gameState.gameOver = false;
-            gameState.timeLeft = gameState.timeLimit;
             gameState.lastMove = null;
+            gameState.timeLeft = gameState.timeLimit;
+            gameState.moveHistory = [];
 
             // 更新玩家信息显示
             blackNameElement.textContent = gameState.player1Name;
@@ -1524,6 +1603,11 @@
                         (i === 11 && j === 11)) { // 右下星
                         cell.classList.add('star');
                     }
+
+                    // 添加预览棋子元素
+                    const previewStone = document.createElement('div');
+                    previewStone.className = `preview-stone ${gameState.currentPlayer}`;
+                    cell.appendChild(previewStone);
                     
                     cell.dataset.row = i;
                     cell.dataset.col = j;
@@ -1543,6 +1627,74 @@
             // 初始化悔棋相关状态
             gameState.moveHistory = [];
             updateUndoButton();
+        }
+
+        // 添加更新预览棋子颜色的函数
+        function updatePreviewStones() {
+            const previewStones = document.querySelectorAll('.preview-stone');
+            previewStones.forEach(stone => {
+                stone.className = `preview-stone ${gameState.currentPlayer}`;
+            });
+        }
+
+        // 修改切换玩家的函数
+        function switchPlayer() {
+            gameState.currentPlayer = gameState.currentPlayer === 'black' ? 'white' : 'black';
+            updatePlayerIndicator();
+            resetTimer();
+            // 更新预览棋子颜色
+            updatePreviewStones();
+        }
+
+        // 修改放置棋子的函数
+        function placeStone(row, col, player) {
+            gameState.board[row][col] = player;
+            gameState.lastMove = { row, col };
+            
+            // 记录移动历史
+            gameState.moveHistory.push({
+                row: row,
+                col: col,
+                player: player
+            });
+
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            cell.classList.add('has-stone'); // 添加已有棋子的标记
+            const stone = document.createElement('div');
+            stone.className = `stone ${player}`;
+            cell.appendChild(stone);
+
+            // 重置计时器
+            resetTimer();
+            
+            // 更新悔棋按钮状态
+            updateUndoButton();
+        }
+
+        // 修改悔棋函数
+        function performUndo() {
+            if (gameState.moveHistory.length === 0) return;
+
+            const lastMove = gameState.moveHistory.pop();
+            const cell = document.querySelector(`.cell[data-row="${lastMove.row}"][data-col="${lastMove.col}"]`);
+            cell.classList.remove('has-stone'); // 移除已有棋子的标记
+            if (cell.lastChild && cell.lastChild.classList.contains('stone')) {
+                cell.removeChild(cell.lastChild);
+            }
+            gameState.board[lastMove.row][lastMove.col] = null;
+            
+            // 切换玩家
+            gameState.currentPlayer = gameState.currentPlayer === 'black' ? 'white' : 'black';
+            updatePlayerIndicator();
+            
+            // 重置计时器
+            resetTimer();
+            
+            // 更新悔棋按钮状态
+            updateUndoButton();
+            
+            // 更新预览棋子颜色
+            updatePreviewStones();
         }
 
         // 更新当前玩家指示
@@ -1630,37 +1782,6 @@
             if (gameState.mode === 'pvc' && gameState.currentPlayer === 'white' && !gameState.gameOver) {
                 setTimeout(computerMove, 500);
             }
-        }
-
-        // 放置棋子
-        function placeStone(row, col, player) {
-            gameState.board[row][col] = player;
-            gameState.lastMove = { row, col };
-            
-            // 记录移动历史
-            gameState.moveHistory.push({
-                row: row,
-                col: col,
-                player: player
-            });
-
-            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-            const stone = document.createElement('div');
-            stone.className = `stone ${player}`;
-            cell.appendChild(stone);
-
-            // 重置计时器
-            resetTimer();
-            
-            // 更新悔棋按钮状态
-            updateUndoButton();
-        }
-
-        // 切换玩家
-        function switchPlayer() {
-            gameState.currentPlayer = gameState.currentPlayer === 'black' ? 'white' : 'black';
-            updatePlayerIndicator();
-            resetTimer();
         }
 
         // 检查是否获胜
@@ -1752,28 +1873,19 @@
         function handleRematch() {
             if (gameState.mode === 'online') {
                 if (!gameState.online.conn || !gameState.online.conn.open) {
-                    showMessage('连接已断开，无法请求重新开始');
+                    showMessage('连接已断开，无法重新开始');
                     return;
                 }
 
                 try {
+                    // 直接通知对方开始新游戏
                     gameState.online.conn.send({
-                        type: 'rematch_request'
+                        type: 'rematch_start'
                     });
-                    const rematchBtn = document.getElementById('rematch-button');
-                    if (rematchBtn) {
-                        rematchBtn.disabled = true;
-                        rematchBtn.classList.add('waiting');
-                    }
-                    showMessage('已发送重新开始请求，等待对方确认...');
+                    startNewGame();
                 } catch (error) {
-                    console.error('发送重新开始请求失败:', error);
-                    showMessage('发送重新开始请求失败，请重试');
-                    const rematchBtn = document.getElementById('rematch-button');
-                    if (rematchBtn) {
-                        rematchBtn.disabled = false;
-                        rematchBtn.classList.remove('waiting');
-                    }
+                    console.error('发送重新开始消息失败:', error);
+                    showMessage('重新开始失败，请重试');
                 }
             } else {
                 startNewGame();
@@ -1783,23 +1895,14 @@
         // 处理重新开始请求
         function handleRematchRequest() {
             if (confirm('对方请求重新开始游戏，是否同意？')) {
-                try {
-                    gameState.online.conn.send({
-                        type: 'rematch_accept'
-                    });
-                    startNewGame();
-                } catch (error) {
-                    console.error('发送接受重新开始请求失败:', error);
-                    showMessage('发送响应失败，请重试');
-                }
+                gameState.online.conn.send({
+                    type: 'rematch_accept'
+                });
+                startNewGame();
             } else {
-                try {
-                    gameState.online.conn.send({
-                        type: 'rematch_decline'
-                    });
-                } catch (error) {
-                    console.error('发送拒绝重新开始请求失败:', error);
-                }
+                gameState.online.conn.send({
+                    type: 'rematch_decline'
+                });
             }
         }
 
@@ -2193,41 +2296,12 @@
             }
         }
 
-        // 执行悔棋
-        function performUndo() {
-            if (gameState.moveHistory.length === 0) return;
-
-            const lastMove = gameState.moveHistory.pop();
-            const cell = document.querySelector(`.cell[data-row="${lastMove.row}"][data-col="${lastMove.col}"]`);
-            if (cell.firstChild) {
-                cell.removeChild(cell.firstChild);
-            }
-            gameState.board[lastMove.row][lastMove.col] = null;
-            
-            // 切换玩家
-            gameState.currentPlayer = gameState.currentPlayer === 'black' ? 'white' : 'black';
-            updatePlayerIndicator();
-            
-            // 重置计时器
-            resetTimer();
-            
-            // 更新悔棋按钮状态
-            updateUndoButton();
-        }
-
-        // 更新悔棋按钮状态
-        function updateUndoButton() {
+        // 启用悔棋按钮
+        function enableUndoButton() {
             const undoButton = document.getElementById('undo-button');
-            if (!undoButton) return;
-
-            // 在线模式下只能悔自己的最后一步
-            if (gameState.mode === 'online') {
-                const canUndo = gameState.moveHistory.length > 0 && 
-                    ((gameState.online.isHost && gameState.currentPlayer === 'white') ||
-                    (!gameState.online.isHost && gameState.currentPlayer === 'black'));
-                undoButton.disabled = !canUndo;
-            } else {
-                undoButton.disabled = gameState.moveHistory.length === 0 || gameState.gameOver;
+            if (undoButton) {
+                undoButton.disabled = false;
+                undoButton.classList.remove('waiting');
             }
         }
 
@@ -2241,29 +2315,6 @@
             } else {
                 gameState.online.conn.send({
                     type: 'undo_decline'
-                });
-            }
-        }
-
-        // 启用悔棋按钮
-        function enableUndoButton() {
-            const undoButton = document.getElementById('undo-button');
-            if (undoButton) {
-                undoButton.disabled = false;
-                undoButton.classList.remove('waiting');
-            }
-        }
-
-        // 处理重新开始请求
-        function handleRematchRequest() {
-            if (confirm('对方请求重新开始游戏，是否同意？')) {
-                gameState.online.conn.send({
-                    type: 'rematch_accept'
-                });
-                startRematch();
-            } else {
-                gameState.online.conn.send({
-                    type: 'rematch_decline'
                 });
             }
         }
@@ -2313,6 +2364,22 @@
             const joinRoomBtn = document.getElementById('join-room-btn');
             if (createRoomBtn) createRoomBtn.disabled = false;
             if (joinRoomBtn) joinRoomBtn.disabled = false;
+        }
+
+        // 更新悔棋按钮状态
+        function updateUndoButton() {
+            const undoButton = document.getElementById('undo-button');
+            if (!undoButton) return;
+
+            // 在线模式下只能悔自己的最后一步
+            if (gameState.mode === 'online') {
+                const canUndo = gameState.moveHistory.length > 0 && 
+                    ((gameState.online.isHost && gameState.currentPlayer === 'white') ||
+                    (!gameState.online.isHost && gameState.currentPlayer === 'black'));
+                undoButton.disabled = !canUndo;
+            } else {
+                undoButton.disabled = gameState.moveHistory.length === 0 || gameState.gameOver;
+            }
         }
     </script>
 </body>
