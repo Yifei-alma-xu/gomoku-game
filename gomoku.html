@@ -1389,6 +1389,18 @@ function setupConnectionListeners() {
                 }
             }, 1000);
         }
+function updateConnectionStatus() {
+    const statusEl = document.querySelector('.connection-status');
+    if (!statusEl) return;
+    
+    if (gameState.online.conn && gameState.online.conn.open) {
+        statusEl.textContent = `已连接: ${gameState.online.opponentName}`;
+        statusEl.classList.add('connected');
+    } else {
+        statusEl.textContent = '连接断开';
+        statusEl.classList.remove('connected');
+    }
+}
 
         function resetTimer() {
             gameState.timeLeft = gameState.timeLimit;
