@@ -220,39 +220,41 @@
             transition: var(--transition);
         }
 
-        .cell:hover {
-            background-color: rgba(210, 169, 82, 0.9);
-            transform: scale(1.05);
+        .cell::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background-color: #000;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 0;
         }
 
-        .cell::before,
         .cell::after {
             content: '';
             position: absolute;
-            background-color: #000;
-        }
-
-        .cell::before {
-            width: 100%;
-            height: 1px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .cell::after {
             width: 1px;
             height: 100%;
+            background-color: #000;
             left: 50%;
             transform: translateX(-50%);
+            z-index: 0;
+        }
+
+        .cell:hover {
+            background-color: rgba(210, 169, 82, 0.9);
+            transform: scale(1.05);
         }
 
         .stone {
             width: 26px;
             height: 26px;
             border-radius: 50%;
-            z-index: 1;
+            z-index: 2;
             box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
             transition: var(--transition);
+            position: relative;
         }
 
         .black {
@@ -477,9 +479,19 @@
         /* 头像选择 */
         .avatar-selection {
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            flex-wrap: nowrap;
+            gap: 8px;
             margin-top: 10px;
+            margin-bottom: 15px;
+            justify-content: flex-start;
+            overflow-x: auto;
+            padding: 5px;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+
+        .avatar-selection::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
         }
 
         .avatar-option {
@@ -487,17 +499,24 @@
             cursor: pointer;
             transition: var(--transition);
             border-radius: 50%;
-            padding: 5px;
+            padding: 8px;
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255, 255, 255, 0.5);
+            border: 2px solid transparent;
         }
 
         .avatar-option:hover {
             transform: scale(1.1);
-            background-color: rgba(79, 195, 247, 0.3);
+            background-color: rgba(79, 195, 247, 0.2);
         }
 
         .avatar-option.selected {
+            background-color: rgba(79, 195, 247, 0.3);
+            border-color: var(--accent-color);
             transform: scale(1.1);
-            box-shadow: 0 0 0 3px var(--accent-color);
         }
 
         /* 响应式设计 */
@@ -789,6 +808,20 @@
             cursor: not-allowed;
             transform: none;
         }
+
+        /* 修改天元和四星的样式 */
+        .cell.star::before {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #000;
+            border-radius: 50%;
+            z-index: 1;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -835,18 +868,16 @@
                         <div class="player-avatar" id="player1-avatar-preview">🐱</div>
                     </div>
                     <div class="avatar-selection" id="player1-avatar-options">
-                        <div class="avatar-option" data-avatar="🐵">🐵</div>
-                        <div class="avatar-option" data-avatar="🐶">🐶</div>
                         <div class="avatar-option" data-avatar="🐱">🐱</div>
-                        <div class="avatar-option" data-avatar="🐭">🐭</div>
-                        <div class="avatar-option" data-avatar="🐹">🐹</div>
-                        <div class="avatar-option" data-avatar="🐰">🐰</div>
-                        <div class="avatar-option" data-avatar="🦊">🦊</div>
-                        <div class="avatar-option" data-avatar="🐻">🐻</div>
+                        <div class="avatar-option" data-avatar="🐶">🐶</div>
                         <div class="avatar-option" data-avatar="🐼">🐼</div>
                         <div class="avatar-option" data-avatar="🐨">🐨</div>
+                        <div class="avatar-option" data-avatar="🦊">🦊</div>
                         <div class="avatar-option" data-avatar="🐯">🐯</div>
                         <div class="avatar-option" data-avatar="🦁">🦁</div>
+                        <div class="avatar-option" data-avatar="🐸">🐸</div>
+                        <div class="avatar-option" data-avatar="🐵">🐵</div>
+                        <div class="avatar-option" data-avatar="🐰">🐰</div>
                     </div>
                 </div>
 
@@ -860,18 +891,16 @@
                         <div class="player-avatar" id="player2-avatar-preview">🐶</div>
                     </div>
                     <div class="avatar-selection" id="player2-avatar-options">
-                        <div class="avatar-option" data-avatar="🐮">🐮</div>
-                        <div class="avatar-option" data-avatar="🐷">🐷</div>
-                        <div class="avatar-option" data-avatar="🐸">🐸</div>
-                        <div class="avatar-option" data-avatar="🐙">🐙</div>
-                        <div class="avatar-option" data-avatar="🦄">🦄</div>
-                        <div class="avatar-option" data-avatar="🐲">🐲</div>
-                        <div class="avatar-option" data-avatar="🐴">🐴</div>
-                        <div class="avatar-option" data-avatar="🦓">🦓</div>
-                        <div class="avatar-option" data-avatar="🦒">🦒</div>
-                        <div class="avatar-option" data-avatar="🐘">🐘</div>
-                        <div class="avatar-option" data-avatar="🦏">🦏</div>
+                        <div class="avatar-option" data-avatar="🐱">🐱</div>
+                        <div class="avatar-option" data-avatar="🐶">🐶</div>
+                        <div class="avatar-option" data-avatar="🐼">🐼</div>
+                        <div class="avatar-option" data-avatar="🐨">🐨</div>
+                        <div class="avatar-option" data-avatar="🦊">🦊</div>
+                        <div class="avatar-option" data-avatar="🐯">🐯</div>
                         <div class="avatar-option" data-avatar="🦁">🦁</div>
+                        <div class="avatar-option" data-avatar="🐸">🐸</div>
+                        <div class="avatar-option" data-avatar="🐵">🐵</div>
+                        <div class="avatar-option" data-avatar="🐰">🐰</div>
                     </div>
                 </div>
             </div>
@@ -1482,6 +1511,16 @@
                 for (let j = 0; j < 15; j++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
+                    
+                    // 添加天元和四星标记
+                    if ((i === 7 && j === 7) || // 天元
+                        (i === 3 && j === 3) || // 左上星
+                        (i === 3 && j === 11) || // 右上星
+                        (i === 11 && j === 3) || // 左下星
+                        (i === 11 && j === 11)) { // 右下星
+                        cell.classList.add('star');
+                    }
+                    
                     cell.dataset.row = i;
                     cell.dataset.col = j;
                     cell.addEventListener('click', () => handleCellClick(i, j));
