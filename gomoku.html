@@ -147,6 +147,42 @@
             transform: translateY(0);
         }
 
+/* 在线对战状态提示 */
+.connection-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.9rem;
+}
+
+/* 游戏模式标签 */
+.mode-tag {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: var(--primary-color);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+}
+
+/* 连接状态动画 */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+.connection-status.connected {
+    background: #4CAF50;
+    animation: pulse 2s infinite;
+}
+
         /* 棋盘样式 */
         #board {
             background-color: var(--board-color);
@@ -461,6 +497,7 @@
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -470,13 +507,16 @@
         <div class="menu-container" id="menu-container">
             <h2 class="menu-title">游戏设置</h2>
             
-            <div class="section">
-                <h3 class="section-title">游戏模式</h3>
-                <div class="option-group">
-                    <button class="option-button" data-mode="pvp">双人对战</button>
-                    <button class="option-button" data-mode="pvc">人机对战</button>
-                </div>
-            </div>
+            <!-- 原模式选择部分修改为 -->
+<div class="section">
+    <h3 class="section-title">游戏模式</h3>
+    <div class="option-group">
+        <button class="option-button" data-mode="pvp">双人对战</button>
+        <button class="option-button" data-mode="pvc">人机对战</button>
+        <button class="option-button" data-mode="online">在线对战</button>
+    </div>
+</div>
+
             
             <div class="section" id="difficulty-section" style="display: none;">
                 <h3 class="section-title">电脑难度</h3>
@@ -486,6 +526,7 @@
                     <button class="option-button" data-difficulty="hard">困难</button>
                 </div>
             </div>
+
             
             <div class="section">
                 <h3 class="section-title">玩家设置</h3>
@@ -549,6 +590,24 @@
                     </div>
                 </div>
             </div>
+
+	    <!-- 新增在线对战设置面板（原难度选择部分下方） -->
+<div class="section" id="online-section" style="display: none;">
+    <h3 class="section-title">在线设置</h3>
+    <div class="input-row">
+        <label for="player-name">你的名称:</label>
+        <input type="text" id="player-name" placeholder="玩家昵称">
+    </div>
+    <div class="option-group">
+        <button class="option-button" id="create-room-btn">创建房间</button>
+        <button class="option-button" id="join-room-btn">加入房间</button>
+    </div>
+    <div class="input-row" id="room-id-input" style="display: none;">
+        <label for="room-id">房间ID:</label>
+        <input type="text" id="room-id" placeholder="输入对方房间ID">
+    </div>
+    <div id="room-status" class="game-message" style="margin-top: 10px;"></div>
+</div>
             
             <button class="start-button" id="start-button">
                 <i class="fas fa-play"></i> 开始游戏
@@ -598,7 +657,7 @@
     <script>
         // 游戏状态
         const gameState = {
-            mode: null, // 'pvp' 或 'pvc'
+            mode: null, // 'pvp' | 'pvc' | 'online'
             difficulty: 'medium', // 'easy', 'medium', 'hard'
             timeLimit: 60, // 默认60秒
             board: Array(15).fill().map(() => Array(15).fill(null)), // 15x15棋盘
@@ -611,7 +670,16 @@
             player1Avatar: '🐱',
             player2Name: '玩家2',
             player2Avatar: '🐶',
-            computerAvatar: '🤖'
+            computerAvatar: '🤖',
+	    // +++ 新增在线对战属性   
+    online: {
+        peer: null,
+        conn: null,
+        isHost: false,
+        roomId: '',
+        playerName: '',
+        opponentName: '对手'
+    }
         };
 
         // DOM元素
@@ -680,10 +748,12 @@
 				        // 添加当前按钮的选中状态
 				        this.classList.add('selected');
 				        gameState.mode = this.dataset.mode;
-				        
-				        // 显示/隐藏难度选择和玩家2设置
-				        difficultySection.style.display = gameState.mode === 'pvc' ? 'block' : 'none';
-				        player2Settings.style.display = gameState.mode === 'pvp' ? 'block' : 'none';
+        
+        // 显示对应设置面板
+        difficultySection.style.display = gameState.mode === 'pvc' ? 'block' : 'none';
+        player2Settings.style.display = gameState.mode === 'pvp' ? 'block' : 'none';
+        document.getElementById('online-section').style.display = 
+            gameState.mode === 'online' ? 'block' : 'none';
 				    });
 				});
 
@@ -698,7 +768,100 @@
 				    });
 				});
 
-        // 开始游戏
+        // +++ 新增：PeerJS在线对战逻辑
+// 创建房间
+document.getElementById('create-room-btn').addEventListener('click', () => {
+    gameState.online.playerName = document.getElementById('player-name').value || '玩家1';
+    gameState.online.isHost = true;
+    
+    gameState.online.peer = new Peer();
+    gameState.online.peer.on('open', (id) => {
+        gameState.online.roomId = id;
+        document.getElementById('room-status').textContent = `房间ID: ${id}，等待对手加入...`;
+        document.getElementById('create-room-btn').disabled = true;
+    });
+    
+    gameState.online.peer.on('connection', (conn) => {
+        gameState.online.conn = conn;
+        setupConnection();
+    });
+});
+
+// 加入房间
+document.getElementById('join-room-btn').addEventListener('click', () => {
+    gameState.online.playerName = document.getElementById('player-name').value || '玩家2';
+    document.getElementById('room-id-input').style.display = 'block';
+    
+    const roomId = document.getElementById('room-id').value.trim();
+    if (!roomId) return;
+    
+    gameState.online.peer = new Peer();
+    gameState.online.peer.on('open', () => {
+        gameState.online.conn = gameState.online.peer.connect(roomId);
+        setupConnection();
+    });
+});
+
+function setupConnection() {
+    const conn = gameState.online.conn;
+    
+    conn.on('open', () => {
+        // 交换玩家名称
+        conn.send({ type: 'handshake', name: gameState.online.playerName });
+        
+        // 更新UI
+        document.getElementById('online-section').style.display = 'none';
+        document.getElementById('room-status').textContent = '';
+        
+        // 显示连接状态
+        const statusEl = document.createElement('div');
+        statusEl.className = 'connection-status';
+        statusEl.textContent = `已连接: ${gameState.online.opponentName}`;
+        document.body.appendChild(statusEl);
+        
+        // 显示游戏模式标签
+        const modeTag = document.createElement('div');
+        modeTag.className = 'mode-tag';
+        modeTag.textContent = '在线对战';
+        document.body.appendChild(modeTag);
+        
+        // 初始化游戏
+        initializeGame();
+    });
+    
+    conn.on('data', (data) => {
+        if (data.type === 'handshake') {
+            gameState.online.opponentName = data.name;
+        } else if (data.type === 'move') {
+            placeStone(data.row, data.col, data.player);
+            switchPlayer();
+        }
+    });
+}
+
+
+
+// 设置连接监听
+function setupConnectionListeners() {
+  gameState.conn.on('open', () => {
+    document.getElementById('room-status').textContent = '已连接！游戏开始';
+    document.getElementById('room-controls').style.display = 'none';
+  });
+  
+  // 接收对方落子
+  gameState.conn.on('data', (data) => {
+    if (data.type === 'move') {
+      placeStone(data.row, data.col, data.player);
+      switchPlayer(); // 切换当前玩家
+    }
+  });
+  
+  gameState.conn.on('close', () => {
+    alert('连接已断开');
+  });
+}
+	    
+	// 开始游戏
         startButton.addEventListener('click', () => {
             if (!gameState.mode) {
                 showMessage('请选择游戏模式');
@@ -784,6 +947,20 @@
                     cell.addEventListener('click', () => handleCellClick(i, j));
                     boardElement.appendChild(cell);
                 }
+// 在线模式特殊处理
+    if (gameState.mode === 'online') {
+        // 设置玩家名称显示
+        if (gameState.online.isHost) {
+            blackNameElement.textContent = gameState.online.playerName;
+            whiteNameElement.textContent = gameState.online.opponentName;
+        } else {
+            blackNameElement.textContent = gameState.online.opponentName;
+            whiteNameElement.textContent = gameState.online.playerName;
+        }
+        
+        // 禁用不需要的UI
+        document.getElementById('back-button').style.display = 'none';
+    }
             }
             
             // 开始计时
@@ -809,7 +986,16 @@
         // 处理点击格子
         function handleCellClick(row, col) {
             if (gameState.gameOver) return;
-            
+            // +++ 新增：在线模式下只能当前玩家操作
+		  // 在线模式下的回合控制
+    if (gameState.mode === 'online') {
+        const isMyTurn = (gameState.currentPlayer === 'black' && gameState.online.isHost) || 
+                        (gameState.currentPlayer === 'white' && !gameState.online.isHost);
+        if (!isMyTurn) {
+            showMessage('请等待对手落子');
+            return;
+        }
+    }
             // 如果是人机对战且当前是电脑回合，则不允许落子
             if (gameState.mode === 'pvc' && gameState.currentPlayer === 'white') return;
             
@@ -818,6 +1004,17 @@
             
             // 落子
             placeStone(row, col, gameState.currentPlayer);
+
+		// +++ 新增：在线模式下发送落子信息
+		  // 在线模式下发送落子数据
+    if (gameState.mode === 'online' && gameState.online.conn) {
+        gameState.online.conn.send({
+            type: 'move',
+            row: row,
+            col: col,
+            player: gameState.currentPlayer
+        });
+    }
             
             // 检查是否获胜
             if (checkWin(row, col, gameState.currentPlayer)) {
