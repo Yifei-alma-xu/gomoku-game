@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋游戏</title>
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #166088;
+            --accent-color: #4fc3f7;
+            --dark-color: #2d3142;
+            --light-color: #f5f5f5;
+            --board-color: #dcb35c;
+            --board-border: #8b4513;
+            --black-stone: radial-gradient(circle at 30% 30%, #666, #000);
+            --white-stone: radial-gradient(circle at 30% 30%, #fff, #ddd);
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: var(--secondary-color);
+            margin: 15px 0;
+            font-size: 2.2rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .menu-container, .game-container {
+            background-color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+            margin-top: 20px;
+            width: 100%;
+            transition: var(--transition);
+        }
+
+        .game-container {
+            display: none;
+        }
+
+        .menu-title, .settings-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--secondary-color);
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .option-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .option-button {
+            padding: 12px 20px;
+            border: 2px solid var(--primary-color);
+            border-radius: 8px;
+            background-color: white;
+            color: var(--primary-color);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .option-button:hover {
+            background-color: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .option-button.selected {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            color: white;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.2);
+        }
+
+        .start-button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .start-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .start-button:active {
+            transform: translateY(0);
+        }
+
+        /* 棋盘样式 */
+        #board {
+            background-color: var(--board-color);
+            display: grid;
+            grid-template-columns: repeat(15, 30px);
+            grid-template-rows: repeat(15, 30px);
+            gap: 1px;
+            padding: 15px;
+            border: 3px solid var(--board-border);
+            border-radius: 5px;
+            box-shadow: var(--shadow);
+            margin: 0 auto;
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            background-color: rgba(220, 179, 92, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .cell:hover {
+            background-color: rgba(210, 169, 82, 0.9);
+            transform: scale(1.05);
+        }
+
+        .cell::before, .cell::after {
+            content: '';
+            position: absolute;
+            background-color: #000;
+        }
+
+        .cell::before {
+            width: 100%;
+            height: 1px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .cell::after {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .stone {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            z-index: 1;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+            transition: var(--transition);
+        }
+
+        .black {
+            background: var(--black-stone);
+        }
+
+        .white {
+            background: var(--white-stone);
+        }
+
+        /* 游戏信息区域 */
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 15px;
+            border-radius: 25px;
+            transition: var(--transition);
+        }
+
+        .player-info.active {
+            background-color: rgba(79, 195, 247, 0.2);
+            box-shadow: 0 0 0 2px var(--accent-color);
+        }
+
+        .player-info.active .player-avatar {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .player-avatar {
+            font-size: 1.8rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+            border-radius: 50%;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .player-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .player-role {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .timer-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .timer-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .timer {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+            min-width: 50px;
+            text-align: center;
+        }
+
+        /* 游戏消息 */
+        .game-message {
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(79, 195, 247, 0.1);
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+
+        .game-message.winner {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: #2e7d32;
+            font-size: 1.3rem;
+        }
+
+        /* 控制按钮 */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 15px;
+        }
+
+        .control-button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .control-button i {
+            font-size: 1.2rem;
+        }
+
+        .restart-button {
+            background: linear-gradient(to right, #ff9800, #f57c00);
+            color: white;
+        }
+
+        .restart-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(245, 124, 0, 0.3);
+        }
+
+        .back-button {
+            background: linear-gradient(to right, #9e9e9e, #757575);
+            color: white;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(117, 117, 117, 0.3);
+        }
+
+        /* 设置输入 */
+        .settings-group {
+            margin-bottom: 20px;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .input-row label {
+            min-width: 120px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .input-row input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .input-row input:focus {
+            border-color: var(--accent-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.3);
+        }
+
+        /* 头像选择 */
+        .avatar-selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .avatar-option {
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border-radius: 50%;
+            padding: 5px;
+        }
+
+        .avatar-option:hover {
+            transform: scale(1.1);
+            background-color: rgba(79, 195, 247, 0.3);
+        }
+
+        .avatar-option.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 3px var(--accent-color);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 600px) {
+            #board {
+                grid-template-columns: repeat(15, 20px);
+                grid-template-rows: repeat(15, 20px);
+                padding: 10px;
+            }
+
+            .cell {
+                width: 20px;
+                height: 20px;
+            }
+
+            .stone {
+                width: 18px;
+                height: 18px;
+            }
+
+            .game-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .player-info {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .option-group {
+                flex-direction: column;
+            }
+
+            .option-button {
+                width: 100%;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>五子棋游戏</h1>
+        
+        <!-- 主菜单 -->
+        <div class="menu-container" id="menu-container">
+            <h2 class="menu-title">游戏设置</h2>
+            
+            <div class="section">
+                <h3 class="section-title">游戏模式</h3>
+                <div class="option-group">
+                    <button class="option-button" data-mode="pvp">双人对战</button>
+                    <button class="option-button" data-mode="pvc">人机对战</button>
+                </div>
+            </div>
+            
+            <div class="section" id="difficulty-section" style="display: none;">
+                <h3 class="section-title">电脑难度</h3>
+                <div class="option-group">
+                    <button class="option-button" data-difficulty="easy">简单</button>
+                    <button class="option-button" data-difficulty="medium">中等</button>
+                    <button class="option-button" data-difficulty="hard">困难</button>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3 class="section-title">玩家设置</h3>
+                <div class="settings-group">
+                    <div class="input-row">
+                        <label for="player1-name">玩家1名称:</label>
+                        <input type="text" id="player1-name" placeholder="玩家1" maxlength="10">
+                    </div>
+                    <div class="input-row">
+                        <label>玩家1头像:</label>
+                        <div class="player-avatar" id="player1-avatar-preview">🐱</div>
+                    </div>
+                    <div class="avatar-selection" id="player1-avatar-options">
+                        <div class="avatar-option" data-avatar="🐵">🐵</div>
+                        <div class="avatar-option" data-avatar="🐶">🐶</div>
+                        <div class="avatar-option" data-avatar="🐱">🐱</div>
+                        <div class="avatar-option" data-avatar="🐭">🐭</div>
+                        <div class="avatar-option" data-avatar="🐹">🐹</div>
+                        <div class="avatar-option" data-avatar="🐰">🐰</div>
+                        <div class="avatar-option" data-avatar="🦊">🦊</div>
+                        <div class="avatar-option" data-avatar="🐻">🐻</div>
+                        <div class="avatar-option" data-avatar="🐼">🐼</div>
+                        <div class="avatar-option" data-avatar="🐨">🐨</div>
+                        <div class="avatar-option" data-avatar="🐯">🐯</div>
+                        <div class="avatar-option" data-avatar="🦁">🦁</div>
+                    </div>
+                </div>
+                
+                <div class="settings-group" id="player2-settings">
+                    <div class="input-row">
+                        <label for="player2-name">玩家2名称:</label>
+                        <input type="text" id="player2-name" placeholder="玩家2" maxlength="10">
+                    </div>
+                    <div class="input-row">
+                        <label>玩家2头像:</label>
+                        <div class="player-avatar" id="player2-avatar-preview">🐶</div>
+                    </div>
+                    <div class="avatar-selection" id="player2-avatar-options">
+                        <div class="avatar-option" data-avatar="🐮">🐮</div>
+                        <div class="avatar-option" data-avatar="🐷">🐷</div>
+                        <div class="avatar-option" data-avatar="🐸">🐸</div>
+                        <div class="avatar-option" data-avatar="🐙">🐙</div>
+                        <div class="avatar-option" data-avatar="🦄">🦄</div>
+                        <div class="avatar-option" data-avatar="🐲">🐲</div>
+                        <div class="avatar-option" data-avatar="🐴">🐴</div>
+                        <div class="avatar-option" data-avatar="🦓">🦓</div>
+                        <div class="avatar-option" data-avatar="🦒">🦒</div>
+                        <div class="avatar-option" data-avatar="🐘">🐘</div>
+                        <div class="avatar-option" data-avatar="🦏">🦏</div>
+                        <div class="avatar-option" data-avatar="🦁">🦁</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3 class="section-title">游戏设置</h3>
+                <div class="settings-group">
+                    <div class="input-row">
+                        <label for="time-limit">落子时间限制(秒):</label>
+                        <input type="number" id="time-limit" min="10" max="300" value="60">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="start-button" id="start-button">
+                <i class="fas fa-play"></i> 开始游戏
+            </button>
+        </div>
+        
+        <!-- 游戏界面 -->
+        <div class="game-container" id="game-container">
+            <div class="game-header">
+                <div class="player-info" id="black-player-info">
+                    <div class="player-avatar" id="black-avatar"></div>
+                    <div>
+                        <div class="player-name" id="black-name">玩家1</div>
+                        <div class="player-role">黑棋</div>
+                    </div>
+                </div>
+                
+                <div class="timer-container">
+                    <div class="timer-label">剩余时间</div>
+                    <div class="timer" id="timer">60</div>
+                </div>
+                
+                <div class="player-info" id="white-player-info">
+                    <div class="player-avatar" id="white-avatar"></div>
+                    <div>
+                        <div class="player-name" id="white-name">玩家2</div>
+                        <div class="player-role">白棋</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="board"></div>
+            
+            <div class="game-message" id="game-message"></div>
+            
+            <div class="controls">
+                <button class="control-button back-button" id="back-button">
+                    <i class="fas fa-arrow-left"></i> 返回菜单
+                </button>
+                <button class="control-button restart-button" id="restart-button">
+                    <i class="fas fa-redo"></i> 重新开始
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        const gameState = {
+            mode: null, // 'pvp' 或 'pvc'
+            difficulty: 'medium', // 'easy', 'medium', 'hard'
+            timeLimit: 60, // 默认60秒
+            board: Array(15).fill().map(() => Array(15).fill(null)), // 15x15棋盘
+            currentPlayer: 'black', // 'black' 或 'white'
+            gameOver: false,
+            timer: null,
+            timeLeft: 60,
+            lastMove: null,
+            player1Name: '玩家1',
+            player1Avatar: '🐱',
+            player2Name: '玩家2',
+            player2Avatar: '🐶',
+            computerAvatar: '🤖'
+        };
+
+        // DOM元素
+        const menuContainer = document.getElementById('menu-container');
+        const gameContainer = document.getElementById('game-container');
+        const boardElement = document.getElementById('board');
+        const timerElement = document.getElementById('timer');
+        const gameMessageElement = document.getElementById('game-message');
+        const blackPlayerInfo = document.getElementById('black-player-info');
+        const whitePlayerInfo = document.getElementById('white-player-info');
+        const blackNameElement = document.getElementById('black-name');
+        const whiteNameElement = document.getElementById('white-name');
+        const blackAvatarElement = document.getElementById('black-avatar');
+        const whiteAvatarElement = document.getElementById('white-avatar');
+        const difficultySection = document.getElementById('difficulty-section');
+        const player2Settings = document.getElementById('player2-settings');
+        const timeLimitInput = document.getElementById('time-limit');
+        const startButton = document.getElementById('start-button');
+        const backButton = document.getElementById('back-button');
+        const restartButton = document.getElementById('restart-button');
+        
+        // 玩家设置元素
+        const player1NameInput = document.getElementById('player1-name');
+        const player2NameInput = document.getElementById('player2-name');
+        const player1AvatarPreview = document.getElementById('player1-avatar-preview');
+        const player2AvatarPreview = document.getElementById('player2-avatar-preview');
+        const player1AvatarOptions = document.querySelectorAll('#player1-avatar-options .avatar-option');
+        const player2AvatarOptions = document.querySelectorAll('#player2-avatar-options .avatar-option');
+
+        // 初始化头像选择
+        player1AvatarOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                gameState.player1Avatar = option.dataset.avatar;
+                player1AvatarPreview.textContent = gameState.player1Avatar;
+                player1AvatarOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+            });
+        });
+
+        player2AvatarOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                gameState.player2Avatar = option.dataset.avatar;
+                player2AvatarPreview.textContent = gameState.player2Avatar;
+                player2AvatarOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+            });
+        });
+
+        // 随机选择初始头像
+        function selectRandomAvatar() {
+            const randomIndex1 = Math.floor(Math.random() * player1AvatarOptions.length);
+            const randomIndex2 = Math.floor(Math.random() * player2AvatarOptions.length);
+            
+            player1AvatarOptions[randomIndex1].click();
+            player2AvatarOptions[randomIndex2].click();
+        }
+
+        // 模式选择 - 修改后的代码
+				document.querySelectorAll('.option-group button[data-mode]').forEach(button => {
+				    button.addEventListener('click', function() {
+				        // 移除其他按钮的选中状态
+				        document.querySelectorAll('.option-group button[data-mode]').forEach(btn => {
+				            btn.classList.remove('selected');
+				        });
+				        
+				        // 添加当前按钮的选中状态
+				        this.classList.add('selected');
+				        gameState.mode = this.dataset.mode;
+				        
+				        // 显示/隐藏难度选择和玩家2设置
+				        difficultySection.style.display = gameState.mode === 'pvc' ? 'block' : 'none';
+				        player2Settings.style.display = gameState.mode === 'pvp' ? 'block' : 'none';
+				    });
+				});
+
+				// 难度选择
+				document.querySelectorAll('#difficulty-section .option-button').forEach(button => {
+				    button.addEventListener('click', function() {
+				        document.querySelectorAll('#difficulty-section .option-button').forEach(btn => {
+				            btn.classList.remove('selected');
+				        });
+				        this.classList.add('selected');
+				        gameState.difficulty = this.dataset.difficulty;
+				    });
+				});
+
+        // 开始游戏
+        startButton.addEventListener('click', () => {
+            if (!gameState.mode) {
+                showMessage('请选择游戏模式');
+                return;
+            }
+            
+            // 获取玩家名称
+            gameState.player1Name = player1NameInput.value.trim() || '玩家1';
+            if (gameState.mode === 'pvp') {
+                gameState.player2Name = player2NameInput.value.trim() || '玩家2';
+            } else {
+                gameState.player2Name = '电脑';
+            }
+            
+            // 获取时间限制
+            gameState.timeLimit = parseInt(timeLimitInput.value) || 60;
+            if (gameState.timeLimit < 10 || gameState.timeLimit > 300) {
+                showMessage('时间限制必须在10-300秒之间', 'error');
+                return;
+            }
+            
+            initializeGame();
+            menuContainer.style.display = 'none';
+            gameContainer.style.display = 'block';
+        });
+
+        // 显示消息
+        function showMessage(message, type = 'info') {
+            gameMessageElement.textContent = message;
+            gameMessageElement.className = 'game-message';
+            if (type === 'error') {
+                gameMessageElement.style.color = '#d32f2f';
+            } else if (type === 'winner') {
+                gameMessageElement.classList.add('winner');
+            }
+        }
+
+        // 返回菜单
+        backButton.addEventListener('click', () => {
+            clearInterval(gameState.timer);
+            menuContainer.style.display = 'block';
+            gameContainer.style.display = 'none';
+        });
+
+        // 重新开始
+        restartButton.addEventListener('click', () => {
+            clearInterval(gameState.timer);
+            initializeGame();
+        });
+
+        // 初始化游戏
+        function initializeGame() {
+            // 重置游戏状态
+            gameState.board = Array(15).fill().map(() => Array(15).fill(null));
+            gameState.currentPlayer = 'black';
+            gameState.gameOver = false;
+            gameState.timeLeft = gameState.timeLimit;
+            gameState.lastMove = null;
+            
+            // 更新玩家信息显示
+            blackNameElement.textContent = gameState.player1Name;
+            whiteNameElement.textContent = gameState.player2Name;
+            blackAvatarElement.textContent = gameState.player1Avatar;
+            whiteAvatarElement.textContent = gameState.mode === 'pvp' ? gameState.player2Avatar : gameState.computerAvatar;
+            
+            // 更新当前玩家指示
+            updatePlayerIndicator();
+            
+            // 清空消息
+            showMessage('');
+            
+            // 更新计时器显示
+            timerElement.textContent = gameState.timeLeft;
+            
+            // 创建棋盘
+            boardElement.innerHTML = '';
+            for (let i = 0; i < 15; i++) {
+                for (let j = 0; j < 15; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', () => handleCellClick(i, j));
+                    boardElement.appendChild(cell);
+                }
+            }
+            
+            // 开始计时
+            startTimer();
+            
+            // 如果是人机对战且电脑先手，则电脑落子
+            if (gameState.mode === 'pvc' && gameState.currentPlayer === 'white') {
+                setTimeout(computerMove, 500);
+            }
+        }
+
+        // 更新当前玩家指示
+        function updatePlayerIndicator() {
+            if (gameState.currentPlayer === 'black') {
+                blackPlayerInfo.classList.add('active');
+                whitePlayerInfo.classList.remove('active');
+            } else {
+                blackPlayerInfo.classList.remove('active');
+                whitePlayerInfo.classList.add('active');
+            }
+        }
+
+        // 处理点击格子
+        function handleCellClick(row, col) {
+            if (gameState.gameOver) return;
+            
+            // 如果是人机对战且当前是电脑回合，则不允许落子
+            if (gameState.mode === 'pvc' && gameState.currentPlayer === 'white') return;
+            
+            // 检查该位置是否已有棋子
+            if (gameState.board[row][col]) return;
+            
+            // 落子
+            placeStone(row, col, gameState.currentPlayer);
+            
+            // 检查是否获胜
+            if (checkWin(row, col, gameState.currentPlayer)) {
+                const winnerName = gameState.currentPlayer === 'black' ? gameState.player1Name : gameState.player2Name;
+                gameOver(`${winnerName} 获胜!`);
+                return;
+            }
+            
+            // 检查是否平局
+            if (checkDraw()) {
+                gameOver('平局!');
+                return;
+            }
+            
+            // 切换玩家
+            switchPlayer();
+            
+            // 如果是人机对战且轮到电脑，则电脑落子
+            if (gameState.mode === 'pvc' && gameState.currentPlayer === 'white' && !gameState.gameOver) {
+                setTimeout(computerMove, 500);
+            }
+        }
+
+        // 放置棋子
+        function placeStone(row, col, player) {
+            gameState.board[row][col] = player;
+            gameState.lastMove = { row, col };
+            
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            const stone = document.createElement('div');
+            stone.className = `stone ${player}`;
+            cell.appendChild(stone);
+            
+            // 重置计时器
+            resetTimer();
+        }
+
+        // 切换玩家
+        function switchPlayer() {
+            gameState.currentPlayer = gameState.currentPlayer === 'black' ? 'white' : 'black';
+            updatePlayerIndicator();
+            resetTimer();
+        }
+
+        // 检查是否获胜
+        function checkWin(row, col, player) {
+            const directions = [
+                [0, 1],   // 水平
+                [1, 0],    // 垂直
+                [1, 1],    // 对角线
+                [1, -1]    // 反对角线
+            ];
+            
+            for (const [dx, dy] of directions) {
+                let count = 1;
+                
+                // 正向检查
+                for (let i = 1; i <= 4; i++) {
+                    const newRow = row + i * dx;
+                    const newCol = col + i * dy;
+                    if (newRow < 0 || newRow >= 15 || newCol < 0 || newCol >= 15 || 
+                        gameState.board[newRow][newCol] !== player) {
+                        break;
+                    }
+                    count++;
+                }
+                
+                // 反向检查
+                for (let i = 1; i <= 4; i++) {
+                    const newRow = row - i * dx;
+                    const newCol = col - i * dy;
+                    if (newRow < 0 || newRow >= 15 || newCol < 0 || newCol >= 15 || 
+                        gameState.board[newRow][newCol] !== player) {
+                        break;
+                    }
+                    count++;
+                }
+                
+                if (count >= 5) return true;
+            }
+            
+            return false;
+        }
+
+        // 检查是否平局
+        function checkDraw() {
+            return gameState.board.every(row => row.every(cell => cell !== null));
+        }
+
+        // 游戏结束
+        function gameOver(message) {
+            gameState.gameOver = true;
+            clearInterval(gameState.timer);
+            showMessage(message, 'winner');
+            
+            // 移除当前玩家指示
+            blackPlayerInfo.classList.remove('active');
+            whitePlayerInfo.classList.remove('active');
+        }
+
+        // 电脑走棋
+        function computerMove() {
+            if (gameState.gameOver) return;
+            
+            let move;
+            switch (gameState.difficulty) {
+                case 'easy':
+                    move = getRandomMove();
+                    break;
+                case 'medium':
+                    move = getMediumMove();
+                    break;
+                case 'hard':
+                    move = getBestMove();
+                    break;
+                default:
+                    move = getMediumMove();
+            }
+            
+            if (move) {
+                placeStone(move.row, move.col, 'white');
+                
+                // 检查是否获胜
+                if (checkWin(move.row, move.col, 'white')) {
+                    gameOver(`${gameState.player2Name} 获胜!`);
+                    return;
+                }
+                
+                // 检查是否平局
+                if (checkDraw()) {
+                    gameOver('平局!');
+                    return;
+                }
+                
+                switchPlayer();
+            }
+        }
+
+        // 简单难度 - 随机走棋
+        function getRandomMove() {
+            const emptyCells = [];
+            for (let i = 0; i < 15; i++) {
+                for (let j = 0; j < 15; j++) {
+                    if (!gameState.board[i][j]) {
+                        emptyCells.push({ row: i, col: j });
+                    }
+                }
+            }
+            
+            return emptyCells.length > 0 ? emptyCells[Math.floor(Math.random() * emptyCells.length)] : null;
+        }
+
+        // 中等难度 - 有一定策略
+        function getMediumMove() {
+            // 如果有可以立即获胜的位置，选择它
+            const winningMove = findWinningMove('white');
+            if (winningMove) return winningMove;
+            
+            // 如果玩家下一步可以获胜，阻止玩家
+            const blockingMove = findWinningMove('black');
+            if (blockingMove) return blockingMove;
+            
+            // 否则选择靠近已有棋子的位置
+            return getSmartRandomMove();
+        }
+
+        // 困难难度 - 使用评估函数选择最佳走法
+        function getBestMove() {
+            // 如果有可以立即获胜的位置，选择它
+            const winningMove = findWinningMove('white');
+            if (winningMove) return winningMove;
+            
+            // 如果玩家下一步可以获胜，阻止玩家
+            const blockingMove = findWinningMove('black');
+            if (blockingMove) return blockingMove;
+            
+            // 使用评估函数选择最佳位置
+            return evaluateBestMove();
+        }
+
+        // 寻找可以立即获胜的走法
+        function findWinningMove(player) {
+            for (let i = 0; i < 15; i++) {
+                for (let j = 0; j < 15; j++) {
+                    if (!gameState.board[i][j]) {
+                        // 模拟在这个位置落子
+                        gameState.board[i][j] = player;
+                        if (checkWin(i, j, player)) {
+                            // 撤销模拟
+                            gameState.board[i][j] = null;
+                            return { row: i, col: j };
+                        }
+                        // 撤销模拟
+                        gameState.board[i][j] = null;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // 智能随机走法 - 选择靠近已有棋子的位置
+        function getSmartRandomMove() {
+            const emptyCells = [];
+            const priorityCells = [];
+            
+            // 收集所有空位
+            for (let i = 0; i < 15; i++) {
+                for (let j = 0; j < 15; j++) {
+                    if (!gameState.board[i][j]) {
+                        emptyCells.push({ row: i, col: j });
+                        
+                        // 检查周围是否有棋子
+                        if (hasAdjacentStones(i, j)) {
+                            priorityCells.push({ row: i, col: j });
+                        }
+                    }
+                }
+            }
+            
+            // 优先选择周围有棋子的位置
+            if (priorityCells.length > 0) {
+                return priorityCells[Math.floor(Math.random() * priorityCells.length)];
+            }
+            
+            // 如果没有周围有棋子的位置，随机选择
+            return emptyCells.length > 0 ? emptyCells[Math.floor(Math.random() * emptyCells.length)] : null;
+        }
+
+        // 检查位置周围是否有棋子
+        function hasAdjacentStones(row, col) {
+            for (let i = Math.max(0, row - 1); i <= Math.min(14, row + 1); i++) {
+                for (let j = Math.max(0, col - 1); j <= Math.min(14, col + 1); j++) {
+                    if ((i !== row || j !== col) && gameState.board[i][j]) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 评估最佳走法
+        function evaluateBestMove() {
+            let bestScore = -Infinity;
+            let bestMoves = [];
+            
+            for (let i = 0; i < 15; i++) {
+                for (let j = 0; j < 15; j++) {
+                    if (!gameState.board[i][j]) {
+                        // 评估这个位置对电脑的价值
+                        const score = evaluatePosition(i, j, 'white');
+                        
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMoves = [{ row: i, col: j }];
+                        } else if (score === bestScore) {
+                            bestMoves.push({ row: i, col: j });
+                        }
+                    }
+                }
+            }
+            
+            // 如果有多个最佳位置，随机选择一个
+            return bestMoves.length > 0 ? bestMoves[Math.floor(Math.random() * bestMoves.length)] : null;
+        }
+
+        // 评估位置的价值
+        function evaluatePosition(row, col, player) {
+            let score = 0;
+            const opponent = player === 'black' ? 'white' : 'black';
+            
+            // 四个方向评估
+            const directions = [
+                [0, 1],   // 水平
+                [1, 0],    // 垂直
+                [1, 1],    // 对角线
+                [1, -1]    // 反对角线
+            ];
+            
+            for (const [dx, dy] of directions) {
+                // 评估玩家在这个方向的潜力
+                score += evaluateDirection(row, col, dx, dy, player);
+                
+                // 评估对手在这个方向的威胁
+                score += evaluateDirection(row, col, dx, dy, opponent) * 0.8;
+            }
+            
+            // 中心位置更有价值
+            const centerDist = Math.sqrt(Math.pow(row - 7, 2) + Math.pow(col - 7, 2));
+            score += (14 - centerDist) * 0.1;
+            
+            return score;
+        }
+
+        // 评估特定方向的潜力
+        function evaluateDirection(row, col, dx, dy, player) {
+            let playerCount = 0; // 连续棋子数
+            let openEnds = 0;    // 开放端数
+            let tempScore = 0;
+            
+            // 检查正向
+            let i = 1;
+            let open = true;
+            while (i <= 4) {
+                const newRow = row + i * dx;
+                const newCol = col + i * dy;
+                
+                if (newRow < 0 || newRow >= 15 || newCol < 0 || newCol >= 15) {
+                    open = false;
+                    break;
+                }
+                
+                if (gameState.board[newRow][newCol] === player) {
+                    playerCount++;
+                } else if (gameState.board[newRow][newCol] === null) {
+                    openEnds++;
+                    break;
+                } else {
+                    open = false;
+                    break;
+                }
+                
+                i++;
+            }
+            
+            // 检查反向
+            i = 1;
+            while (i <= 4) {
+                const newRow = row - i * dx;
+                const newCol = col - i * dy;
+                
+                if (newRow < 0 || newRow >= 15 || newCol < 0 || newCol >= 15) {
+                    open = false;
+                    break;
+                }
+                
+                if (gameState.board[newRow][newCol] === player) {
+                    playerCount++;
+                } else if (gameState.board[newRow][newCol] === null) {
+                    openEnds++;
+                    break;
+                } else {
+                    open = false;
+                    break;
+                }
+                
+                i++;
+            }
+            
+            // 根据连续棋子和开放端计算分数
+            if (playerCount >= 4) tempScore += 10000; // 可以连五
+            else if (playerCount === 3 && openEnds >= 1) tempScore += 1000; // 活四
+            else if (playerCount === 3) tempScore += 100; // 冲四
+            else if (playerCount === 2 && openEnds >= 1) tempScore += 10; // 活三
+            else if (playerCount === 1 && openEnds >= 1) tempScore += 1; // 活二
+            
+            return tempScore;
+        }
+
+        // 计时器功能
+        function startTimer() {
+            clearInterval(gameState.timer);
+            gameState.timeLeft = gameState.timeLimit;
+            timerElement.textContent = gameState.timeLeft;
+            
+            gameState.timer = setInterval(() => {
+                gameState.timeLeft--;
+                timerElement.textContent = gameState.timeLeft;
+                
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timer);
+                    timeOut();
+                }
+            }, 1000);
+        }
+
+        function resetTimer() {
+            gameState.timeLeft = gameState.timeLimit;
+            timerElement.textContent = gameState.timeLeft;
+        }
+
+        function timeOut() {
+            gameOver(`${gameState.currentPlayer === 'black' ? '黑棋' : '白棋'}超时，游戏结束!`);
+        }
+    </script>
+</body>
+</html>
